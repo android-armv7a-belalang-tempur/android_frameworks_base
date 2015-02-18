@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2008 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +17,12 @@
  */
 
 package com.android.systemui.statusbar.policy;
+
+import android.content.Context;
+import android.content.res.Resources;
+import android.content.res.TypedArray;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 
 import com.android.systemui.R;
 
@@ -134,6 +142,24 @@ class TelephonyIcons {
     static final int[] QS_DATA_H = {
                 R.drawable.ic_qs_signal_h,
                 R.drawable.ic_qs_signal_h
+    };
+
+    //HSPA+
+    static final int[][] DATA_HP = {
+            { R.drawable.stat_sys_data_fully_connected_hp,
+              R.drawable.stat_sys_data_fully_connected_hp,
+              R.drawable.stat_sys_data_fully_connected_hp,
+              R.drawable.stat_sys_data_fully_connected_hp },
+            { R.drawable.stat_sys_data_fully_connected_hp,
+              R.drawable.stat_sys_data_fully_connected_hp,
+              R.drawable.stat_sys_data_fully_connected_hp,
+              R.drawable.stat_sys_data_fully_connected_hp }
+    };
+
+    static final int[] QS_DATA_HP = {
+                R.drawable.ic_qs_signal_hp,
+                R.drawable.ic_qs_signal_hp
+
     };
 
     //CDMA
