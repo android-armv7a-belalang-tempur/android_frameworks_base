@@ -597,6 +597,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private boolean mVolumeUpKeyTriggered;
     private boolean mPowerKeyTriggered;
     private long mPowerKeyTime;
+    private boolean mWakeKeyTriggered;
 
     /* The number of steps between min and max brightness */
     private static final int BRIGHTNESS_STEPS = 10;
@@ -4855,22 +4856,27 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
             Slog.d(TAG, "interceptKeyTq keycode=" + keyCode
                     + " interactive=" + interactive + " keyguardActive=" + keyguardActive
-                    + " policyFlags=" + Integer.toHexString(policyFlags));
+                    + " policyFlags=" + Integer.toHexString(policyFlags) + " down=" + down);
         }
 
         // Basic policy based on interactive state.
         int result;
         boolean isWakeKey = (policyFlags & WindowManagerPolicy.FLAG_WAKE) != 0
-                || event.isWakeKey();
+                || event.isWakeKey()
+                || isCustomWakeKey(keyCode);
 
-        if (!isWakeKey) {
-            isWakeKey = isOffscreenWakeKey(keyCode);
-        }
         if (interactive || (isInjected && !isWakeKey)) {
             // When the device is interactive or the key is injected pass the
             // key to the application.
-            result = ACTION_PASS_TO_USER;
+            if (mWakeKeyTriggered && !down) {
+                // ignore the up event from the key wake else
+                // you will get e.g. the volume adjust sound
+                result = 0;
+            } else {
+                result = ACTION_PASS_TO_USER;
+            }
             isWakeKey = false;
+            mWakeKeyTriggered = false;
         } else if (!interactive && shouldDispatchInputWhenNonInteractive()) {
             // If we're currently dozing with the screen on and the keyguard showing, pass the key
             // to the application but preserve its wake key status to make sure we still move
@@ -4890,6 +4896,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         // key processing.
         if (mGlobalKeyManager.shouldHandleGlobalKey(keyCode, event)) {
             if (isWakeKey) {
+                mWakeKeyTriggered = isCustomWakeKey(keyCode);
                 mPowerManager.wakeUp(event.getEventTime());
             }
             return result;
@@ -5159,7 +5166,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
 
         if (isWakeKey) {
+            mWakeKeyTriggered = isCustomWakeKey(keyCode);
             mPowerManager.wakeUp(event.getEventTime());
+        }
+        if (DEBUG_INPUT) {
+            Slog.d(TAG, "interceptKeyTq result=" + result);
         }
         return result;
     }
@@ -5172,7 +5183,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
      * is always considered a wake key.
      */
     private boolean isWakeKeyWhenScreenOff(int keyCode) {
-        if (isOffscreenWakeKey(keyCode)){
+        if (isCustomWakeKey(keyCode)){
             return true;
         }
         switch (keyCode) {
@@ -6748,13 +6759,14 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
     }
 
-    private boolean isOffscreenWakeKey(int keyCode) {
+    private boolean isCustomWakeKey(int keyCode) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (DEBUG_WAKEUP) Log.i(TAG, "isOffscreenWakeKey: mVolumeWakeSupport " + mVolumeWakeSupport);
                 return mVolumeWakeSupport;
             case KeyEvent.KEYCODE_HOME:
+                if (DEBUG_WAKEUP) Log.i(TAG, "isOffscreenWakeKey: mHomeWakeSupport " + mHomeWakeSupport);
                 return mHomeWakeSupport;
         }
         return false;
